@@ -6,71 +6,67 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var db = make(map[string]string)
-
-func setupRouter() *gin.Engine {
-	// Disable Console Color
-	// gin.DisableConsoleColor()
-	r := gin.Default()
-
-	// Ping test
-	r.GET("/ping", func(c *gin.Context) {
-		c.String(http.StatusOK, "pong")
-	})
-
-	// Get user value
-	r.GET("/user/:name", func(c *gin.Context) {
-		user := c.Params.ByName("name")
-		value, ok := db[user]
-		if ok {
-			c.JSON(http.StatusOK, gin.H{"user": user, "value": value})
-		} else {
-			c.JSON(http.StatusOK, gin.H{"user": user, "status": "no value"})
-		}
-	})
-
-	// Authorized group (uses gin.BasicAuth() middleware)
-	// Same than:
-	// authorized := r.Group("/")
-	// authorized.Use(gin.BasicAuth(gin.Credentials{
-	//	  "foo":  "bar",
-	//	  "manu": "123",
-	//}))
-	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
-		"foo":  "bar", // user:foo password:bar
-		"manu": "123", // user:manu password:123
-	}))
-
-	/* example curl for /admin with basicauth header
-	   Zm9vOmJhcg== is base64("foo:bar")
-
-		curl -X POST \
-	  	http://localhost:8080/admin \
-	  	-H 'authorization: Basic Zm9vOmJhcg==' \
-	  	-H 'content-type: application/json' \
-	  	-d '{"value":"bar"}'
-	*/
-	authorized.POST("admin", func(c *gin.Context) {
-		user := c.MustGet(gin.AuthUserKey).(string)
-
-		// Parse JSON
-		var json struct {
-			Value string `json:"value" binding:"required"`
-		}
-
-		if c.Bind(&json) == nil {
-			db[user] = json.Value
-			c.JSON(http.StatusOK, gin.H{"status": "ok"})
-		}
-	})
-
-	return r
-}
-
 func main() {
-	router := setupRouter()
-	err := router.Run(":8080")
-	if err != nil {
-		panic(err)
-	}
+	// 1. Инициализируем Valkey
+	InitValkey()
+
+	// 2. Загружаем конфиг
+	appConfig = LoadConfig()
+
+	// 3. Auth сервер
+	go func() {
+		auth := gin.Default()
+		auth.SetTrustedProxies([]string{"127.0.0.1"})
+		RegisterAuthHandlers(auth)
+		// Простой тестовый эндпоинт
+		auth.GET("/", func(c *gin.Context) {
+			c.String(http.StatusOK, "auth.secure-proxy.lan")
+		})
+
+		// Генерация и проверка TOTP
+		auth.GET("/totp/generate", GenerateTOTPHandler)
+		auth.POST("/totp/validate", ValidateTOTPHandler)
+		auth.StaticFile("/login.html", "./login.html")
+
+		// HTTPS сервер для auth
+		auth.RunTLS(":8443", "_.secure-proxy.lan.crt", "_.secure-proxy.lan.pem")
+	}()
+
+	// 4. REST сайт (демо)
+	rest := gin.Default()
+	rest.SetTrustedProxies([]string{"127.0.0.1"})
+	rest.Use(AuthRequired())
+
+	rest.GET("/set-cookie", func(c *gin.Context) {
+		c.SetCookie("test-cookie", "hello-world", 3600, ".secure-proxy.lan", "", false, true)
+		c.String(http.StatusOK, "Cookie установлена!")
+	})
+
+	rest.GET("/get-cookie", func(c *gin.Context) {
+		cookie, err := c.Cookie("test-cookie")
+		if err != nil {
+			c.String(http.StatusOK, "Cookie не найдена")
+			return
+		}
+		c.String(http.StatusOK, "Cookie значение: %s", cookie)
+	})
+
+	// теперь все маршруты защищены
+
+	rest.GET("/", func(c *gin.Context) {
+		username, _ := c.Get("username")
+		c.String(http.StatusOK, "site1.secure-proxy.lan\n Добро пожаловать, %v", username)
+	})
+	//RegisterProxyRoutes(rest)
+	// HTTPS сервер для demo сайта
+	rest.RunTLS(":9443", "_.secure-proxy.lan.crt", "_.secure-proxy.lan.pem")
+	proxy := gin.Default()
+	proxy.SetTrustedProxies([]string{"127.0.0.1"})
+	RegisterProxyRoutes(proxy)
+	proxy.RunTLS(":10443", "_.secure-proxy.lan.crt", "_.secure-proxy.lan.pem")
+
 }
+
+// rest.GET("/", func(c *gin.Context) {
+// 	c.String(http.StatusOK, "site1.secure-proxy.lan")
+// })
