@@ -18,6 +18,17 @@ func main() {
 		auth := gin.Default()
 		auth.SetTrustedProxies([]string{"127.0.0.1"})
 		RegisterAuthHandlers(auth)
+		// Подключаем шаблоны
+		auth.LoadHTMLGlob("templates/*")
+
+		// Отдаём login.html как шаблон с redirectUrl
+		auth.GET("/login.html", func(c *gin.Context) {
+			redirectUrl := c.Query("redirectUrl")
+			c.HTML(http.StatusOK, "login.html", gin.H{
+				"redirectUrl": redirectUrl,
+			})
+		})
+
 		// Простой тестовый эндпоинт
 		auth.GET("/", func(c *gin.Context) {
 			c.String(http.StatusOK, "auth.secure-proxy.lan")
@@ -26,7 +37,7 @@ func main() {
 		// Генерация и проверка TOTP
 		auth.GET("/totp/generate", GenerateTOTPHandler)
 		auth.POST("/totp/validate", ValidateTOTPHandler)
-		auth.StaticFile("/login.html", "./login.html")
+		//auth.StaticFile("/login.html", "./login.html")
 
 		// HTTPS сервер для auth
 		auth.RunTLS(":8443", "_.secure-proxy.lan.crt", "_.secure-proxy.lan.pem")

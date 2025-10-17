@@ -20,17 +20,21 @@ func RegisterAuthHandlers(auth *gin.Engine) {
 		}
 
 		sessionKey := uuid.New().String()
-		ValkeySet(sessionKey, username, appConfig.Sessions.TTLSeconds)
+		ValkeySet("session_"+sessionKey, username, appConfig.Sessions.TTLSeconds)
 
 		c.SetCookie(
 			appConfig.Sessions.CookieName,
 			sessionKey,
 			appConfig.Sessions.TTLSeconds,
 			"/",
+			//".secure-proxy.lan",
 			appConfig.Sessions.CookieDomain,
 			true,
 			true,
 		)
+		if redirectUrl == "" {
+			redirectUrl = "https://site1.secure-proxy.lan:9443/"
+		}
 
 		c.Redirect(http.StatusFound, redirectUrl)
 	})

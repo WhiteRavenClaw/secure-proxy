@@ -1,3 +1,4 @@
+#authDomain: auth.secure-proxy.lan
 sessions:
   cookieDomain: .secure-proxy.lan
   cookieName: SECURE_PROXY_SESSION

@@ -102,8 +102,8 @@ func ValidateTOTPHandler(c *gin.Context) {
 		appConfig.Sessions.CookieName,
 		sessionKey,
 		appConfig.Sessions.TTLSeconds,
-		//"/",
-		".secure-proxy.lan",
+		"/",
+		//".secure-proxy.lan",
 		appConfig.Sessions.CookieDomain,
 		true, // secure
 		true, // httpOnly

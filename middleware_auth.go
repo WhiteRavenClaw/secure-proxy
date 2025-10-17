@@ -37,6 +37,12 @@ func AuthRequired() gin.HandlerFunc {
 	}
 }
 
+// func redirectToAuth(c *gin.Context) {
+// 	authenticatedRedirectUrl := "https://" + c.Request.Host + c.Request.RequestURI
+// 	authUrl := "https://" + appConfig.AuthDomain + "/?redirectUrl=" + url.QueryEscape(authenticatedRedirectUrl)
+// 	c.Redirect(http.StatusFound, authUrl)
+// }
+
 func redirectToAuth(c *gin.Context) {
 	target := "https://auth.secure-proxy.lan:8443/login.html?redirectUrl=" +
 		url.QueryEscape("https://site1.secure-proxy.lan:9443"+c.Request.URL.Path)

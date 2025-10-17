@@ -24,8 +24,9 @@ type UpstreamConfig struct {
 }
 
 type AppConfig struct {
-	Sessions  SessionConfig    `yaml:"sessions"`
-	Users     []UserConfig     `yaml:"users"`
+	Sessions SessionConfig `yaml:"sessions"`
+	Users    []UserConfig  `yaml:"users"`
+	//AuthDomain string           `yaml:"authDomain"`
 	Upstreams []UpstreamConfig `yaml:"upstreams"`
 }
 
